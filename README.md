@@ -114,6 +114,11 @@ MystenLabs patched the `node.rs` GC epoch desync across a sequence of commits de
   - `af4ba5ed` | Author: `2025-12-18 19:14:33 +0200` | Committer: `2025-12-18 11:14:33 -0600` | 8hr offset
   - `d267da52` | Author: `2025-12-18 08:57:36 +0100` | Committer: `2025-12-17 23:57:36 -0800` | 9hr offset
   - `c480fd80` | Author: `2025-12-15 16:20:21 -0800` | Committer: `2025-12-16 00:20:21 +0000` | 8hr offset
+
+**What MystenLabs Told Users:**
+
+- The [`mainnet-v1.40.3` release notes](https://github.com/MystenLabs/walrus/releases/tag/mainnet-v1.40.3) framed PR #2772 as a routine operational toggle: *"Enables DB transactions and garbage collection by default on Testnet. The features can be disabled by adding the following to your node configuration."* They even provided opt-out instructions — as if a critical security fix was optional.
+- The [Walrus 2025 Year in Review](https://blog.walrus.xyz/walrus-2025-year-in-review) blog post makes **zero mention** of garbage collection, data deletion, or GDPR compliance fixes. Instead it highlights Quilt, Seal, and Upload Relay as the year's achievements. The entire stealth patch sequence was erased from the public record.
 - Full submission process recorded in `hackenproof_submission.webm` (16MB video).
 - Complete evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt` (54 commits), `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff` (3MB), `SHADOW_PATCH_MANIFEST.txt`, `BRADLEY_DAEMON_PATCH.txt`, `COLLUSION_PROOF.txt`, `LEGAL_SUMMARY.txt`, and `WALRUS_FRAUD_EVIDENCE_*.png` screenshots.
 

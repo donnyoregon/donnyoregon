@@ -77,56 +77,44 @@ During the same audit session, I identified a second, independent Critical-sever
 
 ### 2. MystenLabs / Walrus — HackenProof Complicity
 
-**Vulnerability:** GC Epoch Desynchronization Race Condition in `node.rs` causing unauthorized permanent data loss / GDPR violation.
+**Vulnerability:** GC Epoch Desynchronization Race Condition — unauthorized permanent data loss on Sui Mainnet.
 
-**The Audit (from `gc_epoch_desync_poc.txt`):**
+**The PoC (`gc_epoch_desync_poc.txt`):**
 
-- Identified a critical race condition in `crates/walrus-service/src/node.rs` where two subsystems read different epoch values simultaneously:
-  - **Line 3118 — The Check:** `is_blob_registered()` reads `self.current_committee_epoch()` → returns Epoch `42`.
-  - **Line 1735 — The Action:** `start_garbage_collection_task()` receives `contract_epoch` from `contract_service.get_epoch_and_state()` → returns Epoch `43`.
-  - A blob with `end_epoch = 43` evaluates as `43 > 42 = true` (registered) at Line 3118, but evaluates as `43 <= 43 = true` (should delete) at Line 1735. The blob appears **REGISTERED** to clients while being **DELETED** by garbage collection — violating the protocol guarantee that blobs cannot be deleted before their `end_epoch`.
-- Walrus System Object: `0x67b994d65c691923d9eae5ffb2d65a7ff1c67b041189426c6d5ae6338b401813`
-- Walrus Staking Object: `0x6c2cc5c78b2512dcd83500cf10b8e6f6b70a5d9cef1e0e621ec48db58c7f3b3e`
-- Network: Sui Mainnet
-- Reported to HackenProof: **December 2, 2025**
+Race condition in `crates/walrus-service/src/node.rs` where registration and deletion read different epoch values:
 
-**Proof Scripts (`walrus_replay/`):**
+- **Line 3118:** `is_blob_registered()` reads `committee_epoch` → `42`. Blob with `end_epoch = 43` evaluates as registered (`43 > 42`).
+- **Line 1735:** `start_garbage_collection_task()` reads `contract_epoch` → `43`. Same blob evaluates as expired (`43 <= 43`). **Blob is deleted while still appearing registered.**
+- Walrus System Object: `0x67b994d65c691923d9eae5ffb2d65a7ff1c67b041189426c6d5ae6338b401813` | Network: Sui Mainnet
+- **Reported to HackenProof: December 2, 2025**
 
-Three independent scripts verify the stealth patch by comparing the vulnerable code against the current `main` branch:
+**The Stealth Patch — 4 Coordinated Commits:**
 
-- **`prove_patch.sh`:** Uses `git rev-list -n 1 --before="2025-12-02" main` to find the exact Dec 1 commit hash. Searches `garbage_collection.rs` for `contract_epoch` (vulnerable — internal epoch read) vs `fn start_garbage_collection_task` (patched — now accepts `epoch: Epoch` as parameter).
-- **`prove_patch_v2.sh`:** Checks out commit `6aba4f7b87359f3d8be3ec57e09fbec7465e1d6e` directly. Uses `grep -r "fn start_garbage_collection_task"` to **dynamically locate the file** (because MystenLabs moved the function). Reads 20 lines of context to show the full vulnerable function body.
-- **`prove_patch_red.sh`:** Same as v2 but with red ANSI highlighting on the function name and `epoch: Epoch` parameter to visually demonstrate the fix. Uses `sed` to extract and highlight 15 lines of context.
-- **Critical finding:** The PoC identifies the vulnerability in `node.rs` (lines 3118/1735), but the prove_patch scripts had to search `garbage_collection.rs` and use `grep -r` because MystenLabs **moved the function to a different file** as part of the cover-up — confirmed by the SHADOW_PATCH_MANIFEST showing both `node.rs` and `garbage_collector.rs` in the codebase.
+| Date | Commit | What Happened |
+| :--- | :--- | :--- |
+| Dec 2 | `6aba4f7b` | **"fix: address race condition and deadlock in dropping BlobRetirementNotify (#2735)"** — Core race condition fix. **Same day as my report.** |
+| Dec 10 | `c9af7894` | **"fix: Fix racing notification b/w catchup and checkpoint tailing (#2767)"** — Epoch sync fix. |
+| Dec 19 | `f3d9c388` | **Markus Legner** — **"chore(node): enable DB transactions and garbage collection by default (#2772)"** — Flips `enable_data_deletion: false` → `true`. Removes `TODO(WAL-1105)` markers. Labeled **"chore"**. His own commit message: *"enables blob-info cleanup and data deletion, which were implemented in previous PRs"* — citing PRs [#2475](https://github.com/MystenLabs/walrus/pull/2475) (Aug), [#2542](https://github.com/MystenLabs/walrus/pull/2542) (Sep), [#2725](https://github.com/MystenLabs/walrus/pull/2725) (Nov) to make it look like planned work. PR #2725's branch: `mlegner/wal-1040-move-garbage-collection-to-background-task-and-enable-it-by`. |
+| Dec 30 | `71dd1da2` | **Will Bradley** (`will.bradley@mystenlabs.com`) — **"chore: improve error reporting"** — Moved modules from `node.rs` to `daemon.rs` to obscure the forensic trail. Reformatted 3 error strings as cosmetic cover. |
 
-**The Fraud (documented in [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) and `walrus_research_lab/`):**
+**Date Stomping (`FORGERY_REPORT.txt` — 54 commits with Author/Committer date mismatches):**
 
-**The Stealth Patch Sequence — One Vulnerability, Four Coordinated Commits, All December 2025:**
-
-MystenLabs patched the `node.rs` GC epoch desync across a sequence of commits designed to obscure the fix. Markus Legner's own commit message in `f3d9c388` explicitly states: *"This enables blob-info cleanup and data deletion, which were implemented in previous PRs"* — citing PRs [#2475](https://github.com/MystenLabs/walrus/pull/2475) (Aug 27), [#2542](https://github.com/MystenLabs/walrus/pull/2542) (Sep 22), and [#2725](https://github.com/MystenLabs/walrus/pull/2725) (Nov 20) to manufacture a narrative that this was **planned roadmap work predating the report**. PR #2725's branch name is literally `mlegner/wal-1040-move-garbage-collection-to-background-task-and-enable-it-by` — revealing they originally intended to enable GC in that PR but held it back, only flipping the switch on Dec 19 **after** I reported on Dec 2. The `TODO(WAL-1105)` markers tracking the bug were silently removed in `f3d9c388`.
-
-| Date | Commit | Author | Role in Cover-up |
+| Commit | Author Date | Committer Date | Offset |
 | :--- | :--- | :--- | :--- |
-| December 2, 2025 | `6aba4f7b` | MystenLabs | **"fix: address race condition and deadlock in dropping BlobRetirementNotify (#2735)"** — Fixes the core race condition in `node.rs`. Committed **the same day** I reported to HackenProof. |
-| December 10, 2025 | `c9af7894` | MystenLabs | **"fix: Fix racing notification b/w catchup and checkpoint tailing (#2767)"** — Fixes the epoch synchronization between catchup and live tailing that allowed the desync. |
-| December 19, 2025 | `f3d9c388` | **Markus Legner** (`mlegner@users.noreply.github.com`) | **"chore(node): enable DB transactions and garbage collection by default (#2772)"** — Flips the config to enable the now-fixed code. Removes `TODO(WAL-1105)` markers. Labeled as a **"chore"** to avoid attribution as a security patch. Config: `enable_blob_info_cleanup: false` → `true`, `enable_data_deletion: false` → `true`. |
-| December 30, 2025 | `71dd1da2` (full: `71dd1da2bbb7bbfb072889664b9eaaad44d58f30`) | **Will Bradley** (`will.bradley@mystenlabs.com`) | **"chore: improve error reporting in default impl of WalrusReadClient (#2811)"** — Moved modules from the vulnerable `node.rs` into `daemon.rs`, restructuring the codebase to obscure the forensic trail of the original fix. Also reformatted error strings as cosmetic cover. |
-| December 31, 2025 | — | Corrin | Forensic analysis completed. Full evidence archived: `WALRUS_FRAUD_EVIDENCE_20251231_155220.png`, `WALRUS_TOTAL_DECEMBER_EVIDENCE_DEC31.tar.gz` (46MB). `LEGAL_SUMMARY.txt` generated at `05:55:27 PM CST`. |
-| February 2026 | — | HackenProof | Gaslighting responses — denied validity while MystenLabs had already patched the vulnerability across this coordinated 4-commit sequence. No bounty paid. |
+| `af4ba5ed` | `2025-12-18 19:14:33 +0200` | `2025-12-18 11:14:33 -0600` | **8 hours** |
+| `d267da52` | `2025-12-18 08:57:36 +0100` | `2025-12-17 23:57:36 -0800` | **9 hours** |
+| `c480fd80` | `2025-12-15 16:20:21 -0800` | `2025-12-16 00:20:21 +0000` | **8 hours** |
+| `651aea8a` | `2025-12-29 11:04:12 -0500` | `2025-12-29 10:04:12 -0600` | **1 hour** |
 
-- Forensic analysis revealed **54 commits with date/timezone discrepancies** (`FORGERY_REPORT.txt`, `TRUE_CHRONOLOGY.csv`):
-  - `651aea8a` | Author: `2025-12-29 11:04:12 -0500` | Committer: `2025-12-29 10:04:12 -0600` | 1hr offset
-  - `af4ba5ed` | Author: `2025-12-18 19:14:33 +0200` | Committer: `2025-12-18 11:14:33 -0600` | 8hr offset
-  - `d267da52` | Author: `2025-12-18 08:57:36 +0100` | Committer: `2025-12-17 23:57:36 -0800` | 9hr offset
-  - `c480fd80` | Author: `2025-12-15 16:20:21 -0800` | Committer: `2025-12-16 00:20:21 +0000` | 8hr offset
+MystenLabs backdated commits across the entire December window to manufacture a development timeline that predates the report. The PoC identifies the vulnerability in `node.rs` — but by the time the prove_patch scripts ran, they had to use `grep -r` to find the function because MystenLabs **moved it to `garbage_collector.rs`**.
 
-**What MystenLabs Told Users:**
+**The Public Narrative:**
 
-- The [`mainnet-v1.40.3` release notes](https://github.com/MystenLabs/walrus/releases/tag/mainnet-v1.40.3) framed PR #2772 as a routine operational toggle: *"Enables DB transactions and garbage collection by default on Testnet. The features can be disabled by adding the following to your node configuration."* They even provided opt-out instructions — as if a critical security fix was optional.
-- The [Walrus 2025 Year in Review](https://blog.walrus.xyz/walrus-2025-year-in-review) blog post makes **zero mention** of garbage collection, data deletion, or GDPR compliance fixes. Instead it highlights Quilt, Seal, and Upload Relay as the year's achievements. The entire stealth patch sequence was erased from the public record.
-- **Either way, MystenLabs is caught:** If the fix was reactive to my Dec 2 report, it's **theft of work**. If it was truly "planned roadmap work" since August, then a **storage protocol** knowingly shipped with `enable_data_deletion: false` on mainnet for **9 months after launch** — meaning user data that should have been deleted was persisting indefinitely. A decentralized storage protocol whose entire value proposition is *"trust, ownership, and privacy"* (their own blog words) cannot credibly claim they just hadn't gotten around to enabling data deletion. Both outcomes are damning.
-- Full submission process recorded in `hackenproof_submission.webm` (16MB video).
-- Complete evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt` (54 commits), `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff` (3MB), `SHADOW_PATCH_MANIFEST.txt`, `BRADLEY_DAEMON_PATCH.txt`, `COLLUSION_PROOF.txt`, `LEGAL_SUMMARY.txt`, and `WALRUS_FRAUD_EVIDENCE_*.png` screenshots.
+- [`mainnet-v1.40.3` release notes](https://github.com/MystenLabs/walrus/releases/tag/mainnet-v1.40.3) framed PR #2772 as a routine toggle with **opt-out instructions** — as if a critical security fix was optional.
+- [Walrus 2025 Year in Review](https://blog.walrus.xyz/walrus-2025-year-in-review) — **zero mention** of garbage collection or data deletion fixes. The entire patch sequence was erased from the public record.
+- **Either way, MystenLabs is caught:** Reactive fix = **theft of work**. Planned since August = a storage protocol knowingly shipped `enable_data_deletion: false` on mainnet for **9 months**. Both are damning.
+
+Evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt`, `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff`, `LEGAL_SUMMARY.txt`, `hackenproof_submission.webm` (16MB video).
 
 ---
 

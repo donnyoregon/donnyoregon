@@ -98,7 +98,7 @@ During the same audit session, I identified a second, independent Critical-sever
 
 **The Stealth Patch Sequence — One Vulnerability, Four Coordinated Commits, All December 2025:**
 
-MystenLabs patched the `node.rs` GC epoch desync across a sequence of commits designed to obscure the fix. Markus Legner's own commit message in `f3d9c388` explicitly states: *"This enables blob-info cleanup and data deletion, which were implemented in previous PRs"* — confirming commits `6aba4f7b` and `c9af7894` were prerequisite fixes for the same vulnerability. The `TODO(WAL-1105)` markers tracking the bug were silently removed in the same commit.
+MystenLabs patched the `node.rs` GC epoch desync across a sequence of commits designed to obscure the fix. Markus Legner's own commit message in `f3d9c388` explicitly states: *"This enables blob-info cleanup and data deletion, which were implemented in previous PRs"* — citing PRs [#2475](https://github.com/MystenLabs/walrus/pull/2475) (Aug 27), [#2542](https://github.com/MystenLabs/walrus/pull/2542) (Sep 22), and [#2725](https://github.com/MystenLabs/walrus/pull/2725) (Nov 20) to manufacture a narrative that this was **planned roadmap work predating the report**. PR #2725's branch name is literally `mlegner/wal-1040-move-garbage-collection-to-background-task-and-enable-it-by` — revealing they originally intended to enable GC in that PR but held it back, only flipping the switch on Dec 19 **after** I reported on Dec 2. The `TODO(WAL-1105)` markers tracking the bug were silently removed in `f3d9c388`.
 
 | Date | Commit | Author | Role in Cover-up |
 | :--- | :--- | :--- | :--- |

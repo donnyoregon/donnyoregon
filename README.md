@@ -77,38 +77,43 @@ During the same audit session, I identified a second, independent Critical-sever
 
 ### 2. MystenLabs / Walrus — HackenProof Complicity
 
-**Vulnerability:** Split-Brain Exploit (WALRUS-SC-81) & Epoch Subsidy State Corruption in the Walrus decentralized storage network.
+**Vulnerability:** GC Epoch Desynchronization Race Condition in `node.rs` causing unauthorized permanent data loss / GDPR violation.
 
-**The Audit:**
+**The Audit (from `gc_epoch_desync_poc.txt` / `walrus_replay/`):**
 
-- Identified a critical split-brain race condition in `garbage_collection.rs` where blob registration (Address `0x15a62`, Stack Offset `[rsp+0x60]`) reads Epoch 42 while the deletion check (Address `0x15baf`, Stack Offset `[rsp+0x68]`) reads Epoch 43, creating a non-atomic state where a node reports "Registered" while simultaneously executing "Delete", causing unauthorized permanent data loss.
-- Submission date: December 1, 2025, against vulnerable commit `50702d7` (full hash: `6aba4f7b87359f3d8be3ec57e09fbec7465e1d6e`).
-- Wrote three independent proof scripts (`prove_patch.sh`, `prove_patch_v2.sh`, `prove_patch_red.sh`) performing git time-travel from the Dec 1st vulnerable commit to `main`, demonstrating the function signature change in `garbage_collection.rs`:
-  - **Before (Dec 1, Vulnerable):** `fn start_garbage_collection_task` reads `contract_epoch` internally with no external epoch input.
-  - **After (Patched on `main`):** `fn start_garbage_collection_task` now accepts `epoch: Epoch` as an explicit parameter, eliminating the race condition.
-- Built a full dual-node protocol attack script (`walrus_split_brain_exploit.sh`) that launches two `walrus-node` instances to force the exact race condition between `node.rs` Line 3118 (The Check) and Line 1735 (The Action).
-- Tracked epoch subsidy anomalies on Sui Mainnet via the Walrus System Object at `0x2134d52768ea07e8c43570ef975eb3e4c27a39fa6396bef985b5abc58d03ddd2`.
-- Compared Testnet contracts (`testnet-contracts/walrus_subsidies/sources/walrus_subsidies_inner.move`) against Mainnet contracts (`mainnet-contracts/walrus_subsidies/sources/walrus_subsidies_inner.move`) to identify stealth-patched logic differences in `walrus_subsidies.move` and `walrus_context.move`.
+- Identified a critical race condition in `crates/walrus-service/src/node.rs` where two subsystems read different epoch values simultaneously:
+  - **Line 3118 — The Check:** `is_blob_registered()` reads `self.current_committee_epoch()` → returns Epoch `42`.
+  - **Line 1735 — The Action:** `start_garbage_collection_task()` receives `contract_epoch` from `contract_service.get_epoch_and_state()` → returns Epoch `43`.
+  - A blob with `end_epoch = 43` evaluates as `43 > 42 = true` (registered) at Line 3118, but evaluates as `43 <= 43 = true` (should delete) at Line 1735. The blob appears **REGISTERED** to clients while being **DELETED** by garbage collection — violating the protocol guarantee that blobs cannot be deleted before their `end_epoch`.
+- Walrus System Object: `0x67b994d65c691923d9eae5ffb2d65a7ff1c67b041189426c6d5ae6338b401813`
+- Walrus Staking Object: `0x6c2cc5c78b2512dcd83500cf10b8e6f6b70a5d9cef1e0e621ec48db58c7f3b3e`
+- Network: Sui Mainnet
+- Reported to HackenProof: **December 2, 2025**
+- Wrote three independent proof scripts (`prove_patch.sh`, `prove_patch_v2.sh`, `prove_patch_red.sh`) performing git time-travel:
+  - Uses `git rev-list -n 1 --before="2025-12-02" main` to get the exact Dec 1 vulnerable commit hash.
+  - **Before (Dec 1, Vulnerable):** `grep "contract_epoch" garbage_collection.rs` — function reads `contract_epoch` internally with no external epoch input.
+  - **After (Patched on `main`):** `grep "fn start_garbage_collection_task" garbage_collection.rs` — function now accepts `epoch: Epoch` as an explicit parameter, eliminating the race condition.
 
-**The Fraud (captured live by `watchdog_verify/watchdog.sh` and documented in [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure)):**
+**The Fraud (documented in [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure)):**
 
-- The security-critical data deletion/garbage collection fix was hidden inside commit `f3d9c388`, deliberately labeled as a routine **"chore(node): enable DB transactions and garbage collection by default (#2772)"** to avoid attribution as a security patch.
-- Config change in `f3d9c388`: `enable_db_transactions: false` → `true`, `enable_blob_info_cleanup: false` → `true`, `enable_data_deletion: false` → `true`.
-- A cover-up commit by developer **Will Bradley** (`BRADLEY_SECRET_PATCH.diff`) was identified separately.
+**Timeline — All December 2025:**
+
+| Date | Event |
+| :--- | :--- |
+| December 2, 2025 | Vulnerability reported to HackenProof |
+| December 19, 2025 | Commit `f3d9c388` by **Markus Legner** deploys the fix, labeled as **"chore(node): enable DB transactions and garbage collection by default (#2772)"** |
+| December 30, 2025 | Obfuscating commit `71dd1da2` by **Will Bradley** — "chore: improve error reporting in default impl of WalrusReadClient (#2811)" |
+| December 31, 2025 | Forensic analysis completed, all evidence archived (`WALRUS_FRAUD_EVIDENCE_20251231_155220.png`) |
+| February 2026 | HackenProof gaslighting responses — denied validity while MystenLabs had already patched it. No bounty paid. |
+
+- Config change in commit `f3d9c388`: `enable_db_transactions: false` → `true`, `enable_blob_info_cleanup: false` → `true`, `enable_data_deletion: false` → `true`.
 - Forensic analysis revealed **54 commits with date/timezone discrepancies** (`FORGERY_REPORT.txt`, `TRUE_CHRONOLOGY.csv`), suggesting possible history manipulation:
-  - `651aea8a` | Fake: `2025-12-29 11:04:12 -0500` | Real: `2025-12-29 10:04:12 -0600`
-  - `af4ba5ed` | Fake: `2025-12-18 19:14:33 +0200` | Real: `2025-12-18 11:14:33 -0600`
-  - `d267da52` | Fake: `2025-12-18 08:57:36 +0100` | Real: `2025-12-17 23:57:36 -0800`
-  - `c480fd80` | Fake: `2025-12-15 16:20:21 -0800` | Real: `2025-12-16 00:20:21 +0000`
-- Built a custom Forensic Git Watchdog (`watchdog.sh`) that clones a bare `--mirror` of a target repository on a 60-second polling loop, detects force-pushes, and locks deleted commits as local tags before garbage collection.
-- **Live capture on February 20, 2026 at 15:59:45 UTC:** History rewrite detected on `refs/heads/master`.
-  - **Deleted/Overwritten Commit:** `046efb93f35344ae9ddc153e1f64f6ffd75a4df3`
-  - **New (Replacement) Commit:** `5d4716592516074b80c26bdb19b33f316be06b4c`
-  - **Evidence locked as tag:** `evidence_LOCK_refs_heads_master_046efb9`
-- MystenLabs silently changed the vulnerable `garbage_collection.rs` function signature on `main` without a security advisory, CVE, or changelog entry.
-- HackenProof gaslighted the disclosure — denying validity while MystenLabs simultaneously patched it. No bounty paid.
+  - `651aea8a` | Author: `2025-12-29 11:04:12 -0500` | Committer: `2025-12-29 10:04:12 -0600` | 1hr offset
+  - `af4ba5ed` | Author: `2025-12-18 19:14:33 +0200` | Committer: `2025-12-18 11:14:33 -0600` | 8hr offset
+  - `d267da52` | Author: `2025-12-18 08:57:36 +0100` | Committer: `2025-12-17 23:57:36 -0800` | 9hr offset
+  - `c480fd80` | Author: `2025-12-15 16:20:21 -0800` | Committer: `2025-12-16 00:20:21 +0000` | 8hr offset
 - Full submission process recorded in `hackenproof_submission.webm` (16MB video).
-- Complete evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — includes `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt` (54 commits), `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff` (3MB), `SHADOW_PATCH_MANIFEST.txt`, and fraud documentation screenshots.
+- Complete evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — includes `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt` (54 commits), `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff` (3MB), `SHADOW_PATCH_MANIFEST.txt`, and `WALRUS_FRAUD_EVIDENCE_*.png` screenshots.
 
 ---
 

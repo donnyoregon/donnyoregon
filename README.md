@@ -98,16 +98,11 @@ Race condition in `crates/walrus-service/src/node.rs` where registration and del
 | Dec 19 | `f3d9c388` | **Markus Legner** — **"chore(node): enable DB transactions and garbage collection by default (#2772)"** — Flips `enable_data_deletion: false` → `true`. Removes `TODO(WAL-1105)` markers. Labeled **"chore"**. His own commit message: *"enables blob-info cleanup and data deletion, which were implemented in previous PRs"* — citing PRs [#2475](https://github.com/MystenLabs/walrus/pull/2475) (Aug), [#2542](https://github.com/MystenLabs/walrus/pull/2542) (Sep), [#2725](https://github.com/MystenLabs/walrus/pull/2725) (Nov) to make it look like planned work. PR #2725's branch: `mlegner/wal-1040-move-garbage-collection-to-background-task-and-enable-it-by`. |
 | Dec 30 | `71dd1da2` | **Will Bradley** (`will.bradley@mystenlabs.com`) — **"chore: improve error reporting"** — Moved modules from `node.rs` to `daemon.rs` to obscure the forensic trail. Reformatted 3 error strings as cosmetic cover. |
 
-**Date Stomping (`FORGERY_REPORT.txt` — 54 commits with Author/Committer date mismatches):**
+**Timeline Forgery — The "Months-Long" Cover-up:**
 
-| Commit | Author Date | Committer Date | Offset |
-| :--- | :--- | :--- | :--- |
-| `af4ba5ed` | `2025-12-18 19:14:33 +0200` | `2025-12-18 11:14:33 -0600` | **8 hours** |
-| `d267da52` | `2025-12-18 08:57:36 +0100` | `2025-12-17 23:57:36 -0800` | **9 hours** |
-| `c480fd80` | `2025-12-15 16:20:21 -0800` | `2025-12-16 00:20:21 +0000` | **8 hours** |
-| `651aea8a` | `2025-12-29 11:04:12 -0500` | `2025-12-29 10:04:12 -0600` | **1 hour** |
+Instead of minor timezone discrepancies, MystenLabs' true deception was manufacturing a false chronology spanning *months*. By citing PRs from August (#2475), September (#2542), and November (#2725) in their December 19th "chore" commit, they attempted to backdate the entire logic of the desync fix to make it look like planned roadmap work that predated my Dec 2nd disclosure.
 
-MystenLabs backdated commits across the entire December window to manufacture a development timeline that predates the report. The PoC identifies the vulnerability in `node.rs` — but by the time the prove_patch scripts ran, they had to use `grep -r` to find the function because MystenLabs **moved it to `garbage_collector.rs`**.
+The PoC clearly identified the vulnerability in `node.rs` — but by the time the `prove_patch` verification scripts ran in late December, MystenLabs had deliberately moved the modified function to `garbage_collector.rs` (confirmed in `SHADOW_PATCH_MANIFEST.txt`) to break forensic tracking and obscure the diff.
 
 **The Public Narrative:**
 

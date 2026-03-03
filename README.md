@@ -2,7 +2,7 @@
 
 ### Independent Web3 Security Researcher | EVM & Move Bytecode Analyst
 
-I specialize in mathematically complex DeFi protocols, low-level EVM/Move state corruption, and building proprietary zero-day static analysis frameworks. I hunt for the critical vulnerabilities (like missing `SafeCast` bounds and `uint128`/`uint160` truncations) that traditional auditing firms miss.
+I specialize in mathematically complex DeFi protocols, low-level EVM/Move state corruption, and building proprietary zero-day static analysis frameworks. I hunt for the critical vulnerabilities (like missing ` bounds and ` truncations) that traditional auditing firms miss.
 
 ---
 
@@ -89,253 +89,139 @@ During the same audit session, I identified a second, independent Critical-sever
 
 - Reported on December 5, 2025. Rejected internally.
 - Frax subsequently stealth-patched the exact `CannotRedeemZero()` logic (selector `0xb445ff79`) onto mainnet without crediting or compensating the disclosure.
-- Full forensic evidence at [donnyoregon/frxETH-v2-public](https://github.com/donnyoregon/frxETH-v2-public).
+- Full forensic evidence at # Frax Ether Redemption Queue DoS – Zero-Amount Head Ticket Blocks All Redemptions
+**Mainnet-Fork Reproduction | Verified on-chain addresses**
+
+This Proof-of-Concept demonstrates a *Denial-of-Service vulnerability* in the Frax Ether Redemption Queue V2 deployed at:
+
+- **Queue Contract (mainnet):** `0xfDC69e6BE352BD5644C438302DE4E311AAD5565b`
+- **frxETH (mainnet):** `0x5E8422345238F34275888049021821E8E08CAa1f`
+
+The issue:  
+A malicious actor can enter the redemption queue with a **zero-amount ticket**, which becomes the *head of queue*. Because the system enforces strict FIFO redemption (`NotHeadOfQueue`), **all real users behind the attacker are permanently blocked**, even after maturity.
+
+This is true DoS because:
+
+- zero-value tickets **never resolve**
+- the attacker never redeems
+- victims behind attacker are **never the head of queue**
+- funds are locked indefinitely
+
+---
+
+## What This PoC Shows
+
+1. Attacker inserts a **0 frxETH ticket**.  
+2. Victim inserts a valid **100 frxETH** ticket behind attacker.  
+3. Time is advanced **to full queue maturity** (`maxQueueLengthSeconds`).  
+4. Victim attempts redemption.  
+5. Redemption **fails**, not due to maturity, but because attacker’s useless ticket blocks the head-of-queue forever.
+
+---
+
+## Test File Used (included in test/FraxQueueDoS_Repro.t.sol)
+
+The test performs exactly the above scenario against a mainnet fork and asserts that:
+
+- victim redemption **should revert**
+- revert is caused by **queue head enforcement**, not maturity
+
+---
+
+## Running the PoC
+
+export MAINNET_RPC="YOUR_RPC" forge test --match-test test_ZeroAmountHeadTicketBlocksVictimRedemption -vvvv
+
+---
+
+## Summary of Impact
+
+This PoC confirms:
+
+### ✔ **Permanent denial-of-service against all real redemptions**  
+
+### ✔ **Unbounded griefing attack**  
+
+### ✔ **Zero economic cost for attacker**  
+
+### ✔ **Funds of all subsequent users can be locked indefinitely**  
+
+The vulnerability stems from **unconditional queue-head enforcement**, combined with:
+
+- acceptance of 0-value deposits  
+- no garbage-collection for stuck entries  
+- no minimum amount requirement  
+- no mechanism to skip or invalidate useless tickets
+
+---
+
+## Included Files in This Gist
+
+- `test/FraxQueueDoS_Repro.t.sol` – exploitable mainnet-fork test  
+- `frax_queue_dos_poc.log` – full transaction trace (verbose)  
+- `frax_queue_dos_poc.log.gz` – compressed trace  
+- `README_FraxQueueDoS_PoC.md` – this explanation document  
+
+**Together these provide a complete, reproducible reproduction of the DoS vulnerability.**
 
 ---
 
 ### 3. Walrus (MystenLabs) — Stealth Maintenance Patch
 
-**Source Diff:** `DECEMBER_CODE_CHANGES.diff` — 58,452 lines, 52 commits, Dec 2–30 2025 ([MystenLabs/walrus](https://github.com/MystenLabs/walrus))
+The full December 2025 diff is preserved in [`DECEMBER_CODE_CHANGES.diff`](DECEMBER_CODE_CHANGES.diff) — 58,452 lines, 52 commits ([MystenLabs/walrus](https://github.com/MystenLabs/walrus)). The highlights:
 
-#### A. The Epoch Desync Fix Hidden Under a `chore:` Commit
+#### A. Epoch Desync Fix Hidden Under a `chore:` Commit
 
-**Commit `f3d9c38` — Dec 19 — Markus Legner — `chore(node): enable DB transactions and garbage collection by default (#2772)`**
-
-The epoch desync fix was shipped under a `chore:` label. The diff from `node_config_example.yaml` flips two critical defaults:
+Commit `f3d9c38` — Dec 19 — `chore(node): enable DB transactions and garbage collection by default (#2772)`:
 
 ```diff
 -  enable_blob_info_cleanup: false
 -  enable_data_deletion: false
 +  enable_blob_info_cleanup: true
 +  enable_data_deletion: true
-```
 
-Same commit also renamed the `experimental_` prefix away:
-
-```diff
 -    experimental_use_optimistic_transaction_db: false
 +    use_optimistic_transaction_db: true
 ```
 
-And changed batch sizes:
+#### B. Module Moves from `node.rs`
 
-```diff
--  blob_objects_batch_size: 10000
--  data_deletion_batch_size: 1000
-+  blob_objects_batch_size: 5000
-+  data_deletion_batch_size: 2000
-```
-
-A new `validate()` gate was added to `config.rs` enforcing that DB transactions must be enabled if data deletion is enabled — this dependency did not have enforcement before this commit:
-
-```rust
-impl walrus_utils::config::Config for StorageNodeConfig {
-    fn validate(&self) -> anyhow::Result<()> {
-        if !self.db_config.use_optimistic_transaction_db()
-            && self.garbage_collection.enable_data_deletion
-        {
-            anyhow::bail!(
-                "data deletion is only supported when DB transactions are enabled"
-            );
-        }
-        Ok(())
-    }
-}
-```
-
-#### B. Module Moves from `node.rs` to `daemon.rs` / Event Processor
-
-**Commit `c6e920a` — Dec 9 — Will Bradley — `chore: remove use_legacy_event_provider option (#2730)`**
-
-Removed `SuiSystemEventProvider` import from `node.rs`:
+Commit `c6e920a` — Dec 9 — `chore: remove use_legacy_event_provider option (#2730)` — deleted `SuiSystemEventProvider` and the entire legacy event provider fallback from `node.rs`, `config.rs`, `runtime.rs`, and `deploy.rs`:
 
 ```diff
 -    system_events::{EventManager, SuiSystemEventProvider},
 +    system_events::EventManager,
-```
 
-Deleted the entire `if use_legacy_event_provider` branch from `node.rs` `StorageNodeBuilder` — the legacy polling-based path that lived in `node.rs` was removed, leaving only the checkpoint-based `EventProcessor` path:
-
-```diff
--            if config.use_legacy_event_provider {
--                Box::new(SuiSystemEventProvider::new(
--                    read_client.clone(),
--                    sui_config.event_polling_interval,
--                ))
--            } else {
-```
-
-The `use_legacy_event_provider` field was deleted from `config.rs`:
-
-```diff
--    /// Use the legacy event provider.
--    ///
--    /// This is deprecated and will be removed in the future.
--    #[serde(default, skip_serializing_if = "defaults::is_default")]
 -    pub use_legacy_event_provider: bool,
 ```
 
-Removed from `node_config_example.yaml`:
-
-```diff
--use_legacy_event_provider: false
-```
-
-And the CLI flag removed from `deploy.rs`:
-
-```diff
--    /// Use the legacy event processor instead of the standard checkpoint-based event processor.
--    #[arg(long)]
--    use_legacy_event_provider: bool,
-```
-
-The same legacy/new if-else branch was deleted from `runtime.rs`:
-
-```diff
--        let (event_manager, event_processor_handle): (Box<dyn EventManager>, _) =
--            if use_legacy_event_provider {
--                let read_client = runtime.block_on(async { sui_config.new_read_client().await })?;
--                (
--                    Box::new(SuiSystemEventProvider::new(
--                        read_client,
--                        sui_config.event_polling_interval,
--                    )),
--                    tokio::spawn(async { std::future::pending().await }),
--                )
--            } else {
-```
-
-The `bin/node.rs` config loading was also changed in the Dec 19 commit (`f3d9c38`):
-
-```diff
--use walrus_utils::load_from_yaml;
-+use walrus_utils::config::Config as _;
-
--            let result = commands::run(
--                load_from_yaml(&config_path)?,
-+            let config = StorageNodeConfig::load_and_validate(&config_path)?;
-+            let result = commands::run(
-+                config,
-```
-
-**Commit `a0fe265` — Dec 4 — Will Bradley — `chore: refactor BlobEventProcessor - remove sequential processor (#2753)`**
-
-Deleted the `SequentialProcessor` fallback from `blob_event_processor.rs`:
-
-```diff
--enum BlobEventProcessorImpl {
--    BackgroundProcessors { ... },
--    SequentialProcessor {
--        background_event_processor: Arc<BackgroundEventProcessor>,
--    },
--}
-+pub struct BlobEventProcessor {
-+    node: Arc<StorageNodeInner>,
-+    background_processor_senders: Vec<UnboundedSender<TrackedBackgroundTask>>,
-+    ...
-+}
-```
-
-Changed `num_workers` type to prevent falling back to sequential (0 workers):
-
-```diff
--    pub num_workers: usize,
-+    pub num_workers: NonZeroUsize,
-```
+Commit `a0fe265` — Dec 4 — `chore: refactor BlobEventProcessor - remove sequential processor (#2753)` — deleted `SequentialProcessor` from `blob_event_processor.rs`, changed `num_workers: usize` → `NonZeroUsize`.
 
 #### C. Date and Timing Manipulation
 
-**Test timing changed from 50ms to 30s** — Commit `c6e920a` — Dec 9 — `test_client.rs`:
+Commit `c6e920a` — Dec 9 — test timing changed from 50ms to 30s:
 
 ```diff
 -    tokio::time::sleep(Duration::from_millis(50)).await;
--
 -    check_that_blob_is_not_available(client, blob_id).await
-+    // Wait for the deletion event to be processed by storage nodes.
-+    // The checkpoint-based event processor needs time to process the deletion.
 +    wait_for_blob_to_be_unavailable(client, blob_id, Duration::from_secs(30)).await
 ```
 
-**"experimental" date label removed** — Commit `f3d9c38` — Dec 19 — `node_config_example.yaml`:
+Commit `0173958` — Dec 13 — `test: various test improvements (#2759)`:
 
-```diff
--    experimental_use_optimistic_transaction_db: false
-+    use_optimistic_transaction_db: true
-```
+- **Deleted** 113-line `correctly_handles_blob_deletions_with_concurrent_instances` test from `node.rs`
+- **Added `#[ignore]`** to `recovers_all_shards_for_multi_shard_node` and `deletes_expired_blob_data`
+- **Moved `#[should_panic]` tests to success group** in `blob_info.rs`
+- **Reduced test batch sizes 100x** (1000→10)
+- **Replaced struct init with builder pattern**, hiding the `use_legacy_event_processor` field
 
-**113-line concurrent blob deletion test deleted** — Commit `0173958` — Dec 13 — Markus Legner — `test: various test improvements (#2759)` — from `node.rs`:
-
-```diff
--    async_param_test! {
--        correctly_handles_blob_deletions_with_concurrent_instances -> TestResult: [
--            same_epoch_deletable: (true, 1),
--            same_epoch_permanent: (false, 1),
--            later_epoch_deletable: (true, 2),
--            later_epoch_permanent: (false, 2),
--        ]
--    }
--    async fn correctly_handles_blob_deletions_with_concurrent_instances(
--        blob_2_deletable: bool,
--        current_epoch: Epoch,
--    ) -> TestResult {
-```
-
-**`#[ignore]` added to shard recovery and blob deletion tests** — same commit:
-
-```diff
-+    #[ignore = "ignore long-running test by default"]
-     async fn recovers_all_shards_for_multi_shard_node()
-
-+    #[ignore = "ignore long-running test by default"]
-     async fn deletes_expired_blob_data()
-```
-
-**Test batch sizes reduced 100x** — same commit — `garbage_collector.rs`:
-
-```diff
--            blob_objects_batch_size: 1000,
--            data_deletion_batch_size: 1000,
-+            blob_objects_batch_size: 10,
-+            data_deletion_batch_size: 10,
-```
-
-**`#[should_panic]` tests moved to success group** — same commit — `blob_info.rs`:
-
-```diff
--            #[should_panic] metadata_true: (BlobInfoMergeOperand::MarkMetadataStored(true)),
--            #[should_panic] metadata_false: (BlobInfoMergeOperand::MarkMetadataStored(false)),
-
-+            metadata_true: (BlobInfoMergeOperand::MarkMetadataStored(true)),
-+            metadata_false: (BlobInfoMergeOperand::MarkMetadataStored(false)),
-```
-
-**Builder pattern hides field existence** — Commit `c6e920a` — Dec 9 — test files:
-
-```diff
--        .with_test_nodes_config(TestNodesConfig {
--            node_weights: vec![2, 2],
--            use_legacy_event_processor: false,
--            ..Default::default()
--        })
-+        .with_test_nodes_config(
-+            TestNodesConfig::builder()
-+                .with_node_weights(&[2, 2])
-+                .with_enable_event_blob_writer()
-+                .build(),
-+        )
-```
-
-**Race condition fix** — Commit `6aba4f7` — Dec 2 — Zhe Wu — `fix: address race condition and deadlock in dropping BlobRetirementNotify (#2735)` — first commit in the sequence.
-
-**Timeline:**
-
-| Date | Commit | Diff Change | Label |
+| Date | Commit | Change | Label |
 | :--- | :--- | :--- | :--- |
-| Dec 2 | `6aba4f7` | Fixed race condition/deadlock in blob retirement | `fix:` |
+| Dec 2 | `6aba4f7` | Race condition/deadlock fix in blob retirement | `fix:` |
 | Dec 4 | `a0fe265` | Removed `SequentialProcessor`, forced `NonZeroUsize` workers | `chore:` |
-| Dec 9 | `c6e920a` | Removed `use_legacy_event_provider` from `node.rs`, `config.rs`, `runtime.rs`, `deploy.rs`; test timing 50ms→30s | `chore:` |
-| Dec 13 | `0173958` | Deleted concurrent blob deletion test; `#[ignore]` on shard/deletion tests; batch sizes 1000→10; `#[should_panic]` → success | `test:` |
-| Dec 19 | `f3d9c38` | `enable_blob_info_cleanup` false→true; `enable_data_deletion` false→true; renamed `experimental_` prefix | `chore:` |
+| Dec 9 | `c6e920a` | Removed legacy event provider from `node.rs`; test timing 50ms→30s | `chore:` |
+| Dec 13 | `0173958` | Deleted concurrent blob test; `#[ignore]` on shard tests; batch sizes 1000→10 | `test:` |
+| Dec 19 | `f3d9c38` | `enable_data_deletion` false→true; renamed `experimental_` prefix | `chore:` |
 
 ---
 

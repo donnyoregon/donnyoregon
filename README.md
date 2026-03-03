@@ -12,6 +12,8 @@ My public repositories serve as an immutable record of systemic fraud in the Web
 
 ### 1. Marginal Protocol — Cantina Complicity
 
+**VINCE VU#643748** | Finding #27 (Critical) | Submitted to Cantina January 31, 2026
+
 **Vulnerability:** Unsafe Downcast & Unchecked Q96 Price Truncation leading to Pool Insolvency in `MarginalV1Pool`.
 
 **The Audit (from `audit_clean_room/`):**
@@ -22,7 +24,6 @@ My public repositories serve as an immutable record of systemic fraud in the Web
 - Built `find_patch_block.sh` — a binary search script that uses `cast call` against the proxy at `0x3a6c55ce74d940a9b5ddde1e57ef6e70bc8757a7` across block range `17300000` to `17450000` to pinpoint the exact block where the `SafeCast` hex first appears in the implementation bytecode.
 - Built `ForkLiquidation.t.sol` — a full mainnet fork integration test proving a second, separate vulnerability (see Bug #2 below). Details redacted as this bug remains live and unpatched.
 - Previously audited by Spearbit and smolquants (PDFs in `audit_clean_room/audits/`) — neither caught the truncation.
-- Submitted as Finding #27 (Critical) to Cantina on January 31, 2026. Also tracked as **VINCE VU#643748**.
 
 **Bug #2: [REDACTED — LIVE VULNERABILITY]**
 

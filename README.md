@@ -6,7 +6,7 @@ I specialize in mathematically complex DeFi protocols, low-level EVM/Move state 
 
 **I am available to audit your project for real security flaws that the big firms miss.** My tooling traces these sorts of critical project insolvency bugs using manual bytecode reading and custom scanners that go deeper than basic first-level address checks. Every bug I submit comes with bytecode-level verification and mainnet fork tests.
 
-> **Interested?** Reach out via [GitHub Sponsors](https://github.com/sponsors/donnyoregon) or DM **@arch** on [Cantina](https://cantina.xyz).
+> **Interested?** Reach out github or email clarkcorrin@gmail.com
 
 ---
 

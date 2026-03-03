@@ -15,7 +15,7 @@ I'm available to audit your protocol for the class of critical bugs that traditi
 - **Manual expert review** — focused on the mathematically complex areas (price oracles, liquidation math, fixed-point arithmetic, epoch/timing dependencies) where precision errors create protocol-draining vulnerabilities
 - **Full PoC delivery** — every finding delivered with a working Foundry/Move test reproducing the exploit on a mainnet fork
 
-> Interested? Reach out via [GitHub Sponsors](https://github.com/sponsors/donnyoregon) or DM **@arch** on [Cantina](https://cantina.xyz).
+> Interested? Reach out via my github page.
 
 ---
 
@@ -101,83 +101,9 @@ During the same audit session, I identified a second, independent Critical-sever
 **The Fraud:**
 
 - Reported on December 5, 2025. Rejected internally.
-- Frax subsequently stealth-patched the exact `CannotRedeemZero()` logic (selector `0xb445ff79`) onto mainnet without crediting or compensating the disclosure.
-- Full forensic evidence at # Frax Ether Redemption Queue DoS – Zero-Amount Head Ticket Blocks All Redemptions
-**Mainnet-Fork Reproduction | Verified on-chain addresses**
+- Frax subsequently stealth-patched the exact `CannotRedeemZero()` logic (selector `0xb445ff79`) onto mainnet without crediting or compensating the researcher.
 
-This Proof-of-Concept demonstrates a *Denial-of-Service vulnerability* in the Frax Ether Redemption Queue V2 deployed at:
-
-- **Queue Contract (mainnet):** `0xfDC69e6BE352BD5644C438302DE4E311AAD5565b`
-- **frxETH (mainnet):** `0x5E8422345238F34275888049021821E8E08CAa1f`
-
-The issue:  
-A malicious actor can enter the redemption queue with a **zero-amount ticket**, which becomes the *head of queue*. Because the system enforces strict FIFO redemption (`NotHeadOfQueue`), **all real users behind the attacker are permanently blocked**, even after maturity.
-
-This is true DoS because:
-
-- zero-value tickets **never resolve**
-- the attacker never redeems
-- victims behind attacker are **never the head of queue**
-- funds are locked indefinitely
-
----
-
-## What This PoC Shows
-
-1. Attacker inserts a **0 frxETH ticket**.  
-2. Victim inserts a valid **100 frxETH** ticket behind attacker.  
-3. Time is advanced **to full queue maturity** (`maxQueueLengthSeconds`).  
-4. Victim attempts redemption.  
-5. Redemption **fails**, not due to maturity, but because attacker’s useless ticket blocks the head-of-queue forever.
-
----
-
-## Test File Used (included in test/FraxQueueDoS_Repro.t.sol)
-
-The test performs exactly the above scenario against a mainnet fork and asserts that:
-
-- victim redemption **should revert**
-- revert is caused by **queue head enforcement**, not maturity
-
----
-
-## Running the PoC
-
-export MAINNET_RPC="YOUR_RPC" forge test --match-test test_ZeroAmountHeadTicketBlocksVictimRedemption -vvvv
-
----
-
-## Summary of Impact
-
-This PoC confirms:
-
-### ✔ **Permanent denial-of-service against all real redemptions**  
-
-### ✔ **Unbounded griefing attack**  
-
-### ✔ **Zero economic cost for attacker**  
-
-### ✔ **Funds of all subsequent users can be locked indefinitely**  
-
-The vulnerability stems from **unconditional queue-head enforcement**, combined with:
-
-- acceptance of 0-value deposits  
-- no garbage-collection for stuck entries  
-- no minimum amount requirement  
-- no mechanism to skip or invalidate useless tickets
-
----
-
-## Included Files in This Gist
-
-- `test/FraxQueueDoS_Repro.t.sol` – exploitable mainnet-fork test  
-- `frax_queue_dos_poc.log` – full transaction trace (verbose)  
-- `frax_queue_dos_poc.log.gz` – compressed trace  
-- `README_FraxQueueDoS_PoC.md` – this explanation document  
-
-**Together these provide a complete, reproducible reproduction of the DoS vulnerability.**
-
----
+> **Full Case Evidence:** [GIST_LINK_PENDING]
 
 ### 3. Walrus (MystenLabs) — Stealth Maintenance Patch
 

@@ -113,7 +113,7 @@ MystenLabs backdated commits across the entire December window to manufacture a 
 
 - [`mainnet-v1.40.3` release notes](https://github.com/MystenLabs/walrus/releases/tag/mainnet-v1.40.3) framed PR #2772 as a routine toggle with **opt-out instructions** — as if a critical security fix was optional.
 - [Walrus 2025 Year in Review](https://blog.walrus.xyz/walrus-2025-year-in-review) — **zero mention** of garbage collection or data deletion fixes. The entire patch sequence was erased from the public record.
-- **Either way, MystenLabs is caught:** Reactive fix = **theft of work**. Planned since August = a storage protocol knowingly shipped `enable_data_deletion: false` on mainnet for **9 months**. Both are damning.
+- **Either way, MystenLabs is caught:** Garbage collection *was* part of the epoch desync — it's what caused the unauthorized data deletion by default. Reactive fix = **theft of work**. Planned since August = a storage protocol knowingly shipped `enable_data_deletion: false` on mainnet for **9 months**. Both are damning.
 
 Evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt`, `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff`, `LEGAL_SUMMARY.txt`, `hackenproof_submission.webm` (16MB video).
 

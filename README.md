@@ -94,26 +94,26 @@ During the same audit session, I identified a second, independent Critical-sever
   - **Before (Dec 1, Vulnerable):** `grep "contract_epoch" garbage_collection.rs` — function reads `contract_epoch` internally with no external epoch input.
   - **After (Patched on `main`):** `grep "fn start_garbage_collection_task" garbage_collection.rs` — function now accepts `epoch: Epoch` as an explicit parameter, eliminating the race condition.
 
-**The Fraud (documented in [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure)):**
+**The Fraud (documented in [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) and `walrus_research_lab/`):**
 
-**Timeline — All December 2025:**
+**The Stealth Patch Chain — All December 2025:**
 
-| Date | Event |
-| :--- | :--- |
-| December 2, 2025 | Vulnerability reported to HackenProof |
-| December 19, 2025 | Commit `f3d9c388` by **Markus Legner** deploys the fix, labeled as **"chore(node): enable DB transactions and garbage collection by default (#2772)"** |
-| December 30, 2025 | Obfuscating commit `71dd1da2` by **Will Bradley** — "chore: improve error reporting in default impl of WalrusReadClient (#2811)" |
-| December 31, 2025 | Forensic analysis completed, all evidence archived (`WALRUS_FRAUD_EVIDENCE_20251231_155220.png`) |
-| February 2026 | HackenProof gaslighting responses — denied validity while MystenLabs had already patched it. No bounty paid. |
+| Date | Commit | Author | Message |
+| :--- | :--- | :--- | :--- |
+| December 2, 2025 | `6aba4f7b` | MystenLabs | **"fix: address race condition and deadlock in dropping BlobRetirementNotify (#2735)"** — Fixes the **exact race condition** reported to HackenProof **the same day**. |
+| December 10, 2025 | `c9af7894` | MystenLabs | **"fix: Fix racing notification b/w catchup and checkpoint tailing (#2767)"** — Fixes epoch synchronization failure between catchup and live tailing. |
+| December 19, 2025 | `f3d9c388` | **Markus Legner** | **"chore(node): enable DB transactions and garbage collection by default (#2772)"** — Enables the now-fixed GC, labeled as a **"chore"** to avoid attribution as a security patch. Config: `enable_db_transactions: false` → `true`, `enable_blob_info_cleanup: false` → `true`, `enable_data_deletion: false` → `true`. |
+| December 30, 2025 | `71dd1da2` (full: `71dd1da2bbb7bbfb072889664b9eaaad44d58f30`) | **Will Bradley** (`will.bradley@mystenlabs.com`) | **"chore: improve error reporting in default impl of WalrusReadClient (#2811)"** — Trivial error string formatting change in `daemon.rs` (replacing 3 hardcoded strings with `format!` + `type_name::<Self>()`). Used to bury the security commits beneath cosmetic noise. |
+| December 31, 2025 | — | Corrin | Forensic analysis completed. All evidence archived (`WALRUS_FRAUD_EVIDENCE_20251231_155220.png`, `WALRUS_TOTAL_DECEMBER_EVIDENCE_DEC31.tar.gz`). `LEGAL_SUMMARY.txt` generated at `05:55:27 PM CST`. |
+| February 2026 | — | HackenProof | Gaslighting responses — denied validity while MystenLabs had already patched all three bugs. No bounty paid. |
 
-- Config change in commit `f3d9c388`: `enable_db_transactions: false` → `true`, `enable_blob_info_cleanup: false` → `true`, `enable_data_deletion: false` → `true`.
-- Forensic analysis revealed **54 commits with date/timezone discrepancies** (`FORGERY_REPORT.txt`, `TRUE_CHRONOLOGY.csv`), suggesting possible history manipulation:
+- Forensic analysis revealed **54 commits with date/timezone discrepancies** (`FORGERY_REPORT.txt`, `TRUE_CHRONOLOGY.csv`):
   - `651aea8a` | Author: `2025-12-29 11:04:12 -0500` | Committer: `2025-12-29 10:04:12 -0600` | 1hr offset
   - `af4ba5ed` | Author: `2025-12-18 19:14:33 +0200` | Committer: `2025-12-18 11:14:33 -0600` | 8hr offset
   - `d267da52` | Author: `2025-12-18 08:57:36 +0100` | Committer: `2025-12-17 23:57:36 -0800` | 9hr offset
   - `c480fd80` | Author: `2025-12-15 16:20:21 -0800` | Committer: `2025-12-16 00:20:21 +0000` | 8hr offset
 - Full submission process recorded in `hackenproof_submission.webm` (16MB video).
-- Complete evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — includes `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt` (54 commits), `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff` (3MB), `SHADOW_PATCH_MANIFEST.txt`, and `WALRUS_FRAUD_EVIDENCE_*.png` screenshots.
+- Complete evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt` (54 commits), `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff` (3MB), `SHADOW_PATCH_MANIFEST.txt`, `BRADLEY_DAEMON_PATCH.txt`, `COLLUSION_PROOF.txt`, `LEGAL_SUMMARY.txt`, and `WALRUS_FRAUD_EVIDENCE_*.png` screenshots.
 
 ---
 

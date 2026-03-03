@@ -96,16 +96,18 @@ During the same audit session, I identified a second, independent Critical-sever
 
 **The Fraud (documented in [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) and `walrus_research_lab/`):**
 
-**The Stealth Patch Chain — All December 2025:**
+**The Stealth Patch Sequence — One Vulnerability, Four Coordinated Commits, All December 2025:**
 
-| Date | Commit | Author | Message |
+MystenLabs patched the `node.rs` GC epoch desync across a sequence of commits designed to obscure the fix. Markus Legner's own commit message in `f3d9c388` explicitly states: *"This enables blob-info cleanup and data deletion, which were implemented in previous PRs"* — confirming commits `6aba4f7b` and `c9af7894` were prerequisite fixes for the same vulnerability. The `TODO(WAL-1105)` markers tracking the bug were silently removed in the same commit.
+
+| Date | Commit | Author | Role in Cover-up |
 | :--- | :--- | :--- | :--- |
-| December 2, 2025 | `6aba4f7b` | MystenLabs | **"fix: address race condition and deadlock in dropping BlobRetirementNotify (#2735)"** — Fixes the **exact race condition** reported to HackenProof **the same day**. |
-| December 10, 2025 | `c9af7894` | MystenLabs | **"fix: Fix racing notification b/w catchup and checkpoint tailing (#2767)"** — Fixes epoch synchronization failure between catchup and live tailing. |
-| December 19, 2025 | `f3d9c388` | **Markus Legner** | **"chore(node): enable DB transactions and garbage collection by default (#2772)"** — Enables the now-fixed GC, labeled as a **"chore"** to avoid attribution as a security patch. Config: `enable_db_transactions: false` → `true`, `enable_blob_info_cleanup: false` → `true`, `enable_data_deletion: false` → `true`. |
-| December 30, 2025 | `71dd1da2` (full: `71dd1da2bbb7bbfb072889664b9eaaad44d58f30`) | **Will Bradley** (`will.bradley@mystenlabs.com`) | **"chore: improve error reporting in default impl of WalrusReadClient (#2811)"** — Trivial error string formatting change in `daemon.rs` (replacing 3 hardcoded strings with `format!` + `type_name::<Self>()`). Used to bury the security commits beneath cosmetic noise. |
-| December 31, 2025 | — | Corrin | Forensic analysis completed. All evidence archived (`WALRUS_FRAUD_EVIDENCE_20251231_155220.png`, `WALRUS_TOTAL_DECEMBER_EVIDENCE_DEC31.tar.gz`). `LEGAL_SUMMARY.txt` generated at `05:55:27 PM CST`. |
-| February 2026 | — | HackenProof | Gaslighting responses — denied validity while MystenLabs had already patched all three bugs. No bounty paid. |
+| December 2, 2025 | `6aba4f7b` | MystenLabs | **"fix: address race condition and deadlock in dropping BlobRetirementNotify (#2735)"** — Fixes the core race condition in `node.rs`. Committed **the same day** I reported to HackenProof. |
+| December 10, 2025 | `c9af7894` | MystenLabs | **"fix: Fix racing notification b/w catchup and checkpoint tailing (#2767)"** — Fixes the epoch synchronization between catchup and live tailing that allowed the desync. |
+| December 19, 2025 | `f3d9c388` | **Markus Legner** (`mlegner@users.noreply.github.com`) | **"chore(node): enable DB transactions and garbage collection by default (#2772)"** — Flips the config to enable the now-fixed code. Removes `TODO(WAL-1105)` markers. Labeled as a **"chore"** to avoid attribution as a security patch. Config: `enable_blob_info_cleanup: false` → `true`, `enable_data_deletion: false` → `true`. |
+| December 30, 2025 | `71dd1da2` (full: `71dd1da2bbb7bbfb072889664b9eaaad44d58f30`) | **Will Bradley** (`will.bradley@mystenlabs.com`) | **"chore: improve error reporting in default impl of WalrusReadClient (#2811)"** — Trivial `daemon.rs` change (reformatting 3 error strings). Buries the security commits beneath cosmetic noise. |
+| December 31, 2025 | — | Corrin | Forensic analysis completed. Full evidence archived: `WALRUS_FRAUD_EVIDENCE_20251231_155220.png`, `WALRUS_TOTAL_DECEMBER_EVIDENCE_DEC31.tar.gz` (46MB). `LEGAL_SUMMARY.txt` generated at `05:55:27 PM CST`. |
+| February 2026 | — | HackenProof | Gaslighting responses — denied validity while MystenLabs had already patched the vulnerability across this coordinated 4-commit sequence. No bounty paid. |
 
 - Forensic analysis revealed **54 commits with date/timezone discrepancies** (`FORGERY_REPORT.txt`, `TRUE_CHRONOLOGY.csv`):
   - `651aea8a` | Author: `2025-12-29 11:04:12 -0500` | Committer: `2025-12-29 10:04:12 -0600` | 1hr offset

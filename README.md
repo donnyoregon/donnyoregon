@@ -56,18 +56,18 @@ During the same audit session, I identified a second, independent Critical-sever
 - My report was marked "Duplicate" of a previously REJECTED Finding #24 on February 5, 2026, then locked to prevent dispute.
 - Cantina arbitrated in favor of the protocol despite immutable on-chain proof of the fix.
 
-**Preserved Evidence:**
+**Preserved Evidence (Archived in [Marginal-v1-Unsafe-Downcast-Advisory](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory)):**
 
-- **Saved Cantina Report Page:** `Insolvency via Unchecked Q96 Price Truncation in MarginalV1Pool _ Cantina.pdf` (full page capture of Finding #27 as submitted)
-- **Cantina Triage Rejection Thread:** `Cantina_Triage_Rejection_Thread.pdf` (the complete email/triage chain showing the rejection, duplicate classification, and dispute lockout)
-- **Original Submission Text:** `marginal-v1-disclosure/cantina_submission.txt`
-- **Full Exploit Code:** `marginal-v1-disclosure/full_exploit_code.t.sol` and `marginal-forensics-final/evidence/Exploit.t.sol`
-- **PoC Output Log:** `marginal-forensics-final/evidence/marginal_poc_output.txt`
-- **Bytecode SafeCast Diff:** `marginal-v1-disclosure/bytecode-safe-cast/bytecode_proof.md`
-- **Storage Slot 6 Implementation Swap Diff:** `marginal-v1-disclosure/storage-slot-diff/slot_6_diff.md`
-- **Stealth Patch TX Proof:** `marginal-v1-disclosure/tx-proof/stealth_patch_tx.md`
-- **Screenshots:** `marginal_bug_proof.png`, `debugger_marginal_bug_proof.png`, `marginal debug1.png`, `marginal logs 1-3.png`
-- **Video Proof:** `marginal vid 1.webm`, `true dos marginal.webm`
+- **Saved Cantina Report Page:** [`Insolvency via Unchecked Q96 Price Truncation in MarginalV1Pool _ Cantina.pdf`](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory/blob/main/evidence/Insolvency%20via%20Unchecked%20Q96%20Price%20Truncation%20in%20MarginalV1Pool%20_%20Cantina.pdf)
+- **Cantina Triage Rejection Thread:** [`Cantina_Triage_Rejection_Thread.pdf`](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory/blob/main/evidence/Cantina_Triage_Rejection_Thread.pdf)
+- **Original Submission Text:** [`marginal-v1-disclosure/cantina_submission.txt`](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory/blob/main/marginal-v1-disclosure/cantina_submission.txt)
+- **Full Exploit Code:** [`Exploit.t.sol`](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory/blob/main/marginal-forensics-final/evidence/Exploit.t.sol)
+- **PoC Output Log:** [`marginal_poc_output.txt`](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory/blob/main/marginal-forensics-final/evidence/marginal_poc_output.txt)
+- **Bytecode SafeCast Diff:** [`bytecode_proof.md`](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory/blob/main/marginal-v1-disclosure/bytecode-safe-cast/bytecode_proof.md)
+- **Storage Slot 6 Implementation Swap Diff:** [`slot_6_diff.md`](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory/blob/main/marginal-v1-disclosure/storage-slot-diff/slot_6_diff.md)
+- **Stealth Patch TX Proof:** [`stealth_patch_tx.md`](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory/blob/main/marginal-v1-disclosure/tx-proof/stealth_patch_tx.md)
+- **Screenshots:** Found in the [`evidence/`](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory/tree/main/evidence) directory.
+- **Video Proof:** Available in the [Marginal Disclosure Repo](https://github.com/donnyoregon/Marginal-v1-Unsafe-Downcast-Advisory).
 
 **Key Addresses:**
 

@@ -22,7 +22,7 @@ My public repositories serve as an immutable record of systemic fraud in the Web
 - Built `find_patch_block.sh` — a binary search script that uses `cast call` against the proxy at `0x3a6c55ce74d940a9b5ddde1e57ef6e70bc8757a7` across block range `17300000` to `17450000` to pinpoint the exact block where the `SafeCast` hex first appears in the implementation bytecode.
 - Built `ForkLiquidation.t.sol` — a full mainnet fork integration test proving a second, separate vulnerability (see Bug #2 below). Details redacted as this bug remains live and unpatched.
 - Previously audited by Spearbit and smolquants (PDFs in `audit_clean_room/audits/`) — neither caught the truncation.
-- Submitted as Finding #27 (Critical) to Cantina on January 31, 2026.
+- Submitted as Finding #27 (Critical) to Cantina on January 31, 2026. Also tracked as **VINCE VU#643748**.
 
 **Bug #2: [REDACTED — LIVE VULNERABILITY]**
 
@@ -90,17 +90,25 @@ During the same audit session, I identified a second, independent Critical-sever
 - Tracked epoch subsidy anomalies on Sui Mainnet via the Walrus System Object at `0x2134d52768ea07e8c43570ef975eb3e4c27a39fa6396bef985b5abc58d03ddd2`.
 - Compared Testnet contracts (`testnet-contracts/walrus_subsidies/sources/walrus_subsidies_inner.move`) against Mainnet contracts (`mainnet-contracts/walrus_subsidies/sources/walrus_subsidies_inner.move`) to identify stealth-patched logic differences in `walrus_subsidies.move` and `walrus_context.move`.
 
-**The Fraud (captured live by `watchdog_verify/watchdog.sh`):**
+**The Fraud (captured live by `watchdog_verify/watchdog.sh` and documented in [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure)):**
 
-- Built a custom Forensic Git Watchdog (`watchdog.sh`) that clones a bare `--mirror` of a target repository on a 60-second polling loop. On every fetch, it compares `git show-ref` snapshots to detect any force-push or history rewrite. When a force-push is detected, the watchdog immediately tags the deleted commit locally (preventing garbage collection) and exports a forensic evidence report.
-- **Live capture on February 20, 2026 at 15:59:45 UTC:** The watchdog detected a **HISTORY REWRITE** (force-push) on `refs/heads/master`.
+- The security-critical data deletion/garbage collection fix was hidden inside commit `f3d9c388`, deliberately labeled as a routine **"chore(node): enable DB transactions and garbage collection by default (#2772)"** to avoid attribution as a security patch.
+- Config change in `f3d9c388`: `enable_db_transactions: false` → `true`, `enable_blob_info_cleanup: false` → `true`, `enable_data_deletion: false` → `true`.
+- A cover-up commit by developer **Will Bradley** (`BRADLEY_SECRET_PATCH.diff`) was identified separately.
+- Forensic analysis revealed **54 commits with date/timezone discrepancies** (`FORGERY_REPORT.txt`, `TRUE_CHRONOLOGY.csv`), suggesting possible history manipulation:
+  - `651aea8a` | Fake: `2025-12-29 11:04:12 -0500` | Real: `2025-12-29 10:04:12 -0600`
+  - `af4ba5ed` | Fake: `2025-12-18 19:14:33 +0200` | Real: `2025-12-18 11:14:33 -0600`
+  - `d267da52` | Fake: `2025-12-18 08:57:36 +0100` | Real: `2025-12-17 23:57:36 -0800`
+  - `c480fd80` | Fake: `2025-12-15 16:20:21 -0800` | Real: `2025-12-16 00:20:21 +0000`
+- Built a custom Forensic Git Watchdog (`watchdog.sh`) that clones a bare `--mirror` of a target repository on a 60-second polling loop, detects force-pushes, and locks deleted commits as local tags before garbage collection.
+- **Live capture on February 20, 2026 at 15:59:45 UTC:** History rewrite detected on `refs/heads/master`.
   - **Deleted/Overwritten Commit:** `046efb93f35344ae9ddc153e1f64f6ffd75a4df3`
   - **New (Replacement) Commit:** `5d4716592516074b80c26bdb19b33f316be06b4c`
   - **Evidence locked as tag:** `evidence_LOCK_refs_heads_master_046efb9`
-  - **Proof file exported:** `EVIDENCE_evidence_LOCK_refs_heads_master_046efb9.txt`
-- MystenLabs refactored their GitHub repository to obscure the stealth patch: the vulnerable `garbage_collection.rs` function signature was silently changed on `main` without a dedicated security advisory, CVE, or changelog entry.
-- HackenProof assisted in the process, allowing MystenLabs to clean up the commit history before closing the bounty.
-- Full evidence archive preserved in `walrus_replay/walrus_evidence/` including testnet vs mainnet contract diffs, Walrus whitepapers (v1, v2), and docker service configurations.
+- MystenLabs silently changed the vulnerable `garbage_collection.rs` function signature on `main` without a security advisory, CVE, or changelog entry.
+- HackenProof gaslighted the disclosure — denying validity while MystenLabs simultaneously patched it. No bounty paid.
+- Full submission process recorded in `hackenproof_submission.webm` (16MB video).
+- Complete evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — includes `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt` (54 commits), `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff` (3MB), `SHADOW_PATCH_MANIFEST.txt`, and fraud documentation screenshots.
 
 ---
 

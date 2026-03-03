@@ -1,4 +1,4 @@
-# Hi, I'm Corrin (@donnyoregon)
+# Hi, I'm Donnyoregon/@arch on cantina
 
 ### Independent Web3 Security Researcher | EVM & Move Bytecode Analyst
 

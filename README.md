@@ -76,45 +76,7 @@ During the same audit session, I identified a second, independent Critical-sever
 
 ---
 
-### 2. MystenLabs / Walrus — HackenProof Complicity
-
-**Vulnerability:** GC Epoch Desynchronization Race Condition — unauthorized permanent data loss on Sui Mainnet.
-
-**The PoC (`gc_epoch_desync_poc.txt`):**
-
-Race condition in `crates/walrus-service/src/node.rs` where registration and deletion read different epoch values:
-
-- **Line 3118:** `is_blob_registered()` reads `committee_epoch` → `42`. Blob with `end_epoch = 43` evaluates as registered (`43 > 42`).
-- **Line 1735:** `start_garbage_collection_task()` reads `contract_epoch` → `43`. Same blob evaluates as expired (`43 <= 43`). **Blob is deleted while still appearing registered.**
-- Walrus System Object: `0x67b994d65c691923d9eae5ffb2d65a7ff1c67b041189426c6d5ae6338b401813` | Network: Sui Mainnet
-- **Reported to HackenProof: December 2, 2025**
-
-**The Stealth Patch — 4 Coordinated Commits:**
-
-| Date | Commit | What Happened |
-| :--- | :--- | :--- |
-| Dec 2 | `6aba4f7b` | **"fix: address race condition and deadlock in dropping BlobRetirementNotify (#2735)"** — Core race condition fix. **Same day as my report.** |
-| Dec 10 | `c9af7894` | **"fix: Fix racing notification b/w catchup and checkpoint tailing (#2767)"** — Epoch sync fix. |
-| Dec 19 | `f3d9c388` | **Markus Legner** — **"chore(node): enable DB transactions and garbage collection by default (#2772)"** — Flips `enable_data_deletion: false` → `true`. Removes `TODO(WAL-1105)` markers. Labeled **"chore"**. His own commit message: *"enables blob-info cleanup and data deletion, which were implemented in previous PRs"* — citing PRs [#2475](https://github.com/MystenLabs/walrus/pull/2475) (Aug), [#2542](https://github.com/MystenLabs/walrus/pull/2542) (Sep), [#2725](https://github.com/MystenLabs/walrus/pull/2725) (Nov) to make it look like planned work. PR #2725's branch: `mlegner/wal-1040-move-garbage-collection-to-background-task-and-enable-it-by`. |
-| Dec 30 | `71dd1da2` | **Will Bradley** (`will.bradley@mystenlabs.com`) — **"chore: improve error reporting"** — Moved modules from `node.rs` to `daemon.rs` to obscure the forensic trail. Reformatted 3 error strings as cosmetic cover. |
-
-**Timeline Forgery — The "Months-Long" Cover-up:**
-
-Instead of minor timezone discrepancies, MystenLabs' true deception was manufacturing a false chronology spanning *months*. By citing PRs from August (#2475), September (#2542), and November (#2725) in their December 19th "chore" commit, they attempted to backdate the entire logic of the desync fix to make it look like planned roadmap work that predated my Dec 2nd disclosure.
-
-The PoC clearly identified the vulnerability in `node.rs` — but by the time the `prove_patch` verification scripts ran in late December, MystenLabs had deliberately moved the modified function to `garbage_collector.rs` (confirmed in `SHADOW_PATCH_MANIFEST.txt`) to break forensic tracking and obscure the diff.
-
-**The Public Narrative:**
-
-- [`mainnet-v1.40.3` release notes](https://github.com/MystenLabs/walrus/releases/tag/mainnet-v1.40.3) framed PR #2772 as a routine toggle with **opt-out instructions** — as if a critical security fix was optional.
-- [Walrus 2025 Year in Review](https://blog.walrus.xyz/walrus-2025-year-in-review) — **zero mention** of garbage collection or data deletion fixes. The entire patch sequence was erased from the public record.
-- **Either way, MystenLabs is caught:** Garbage collection *was* part of the epoch desync — it's what caused the unauthorized data deletion by default. Reactive fix = **theft of work**. Planned since August = a storage protocol knowingly shipped `enable_data_deletion: false` on mainnet for **9 months**. Both are damning.
-
-Evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) — `FULL_DISCLOSURE.md`, `FORGERY_REPORT.txt`, `TRUE_CHRONOLOGY.csv`, `DECEMBER_CODE_CHANGES.diff`, `LEGAL_SUMMARY.txt`, `hackenproof_submission.webm` (16MB video).
-
----
-
-### 3. Frax Finance — Internal Cover-up
+### 2. Frax Finance — Internal Cover-up
 
 **Vulnerability:** `CannotRedeemZero()` DoS in `FraxEtherRedemptionQueueV2` (selector `0xb445ff79`).
 

@@ -2,7 +2,20 @@
 
 ### Independent Web3 Security Researcher | EVM & Move Bytecode Analyst
 
-I specialize in mathematically complex DeFi protocols, low-level EVM/Move state corruption, and building proprietary zero-day static analysis frameworks. I hunt for the critical vulnerabilities (like missing ` bounds and ` truncations) that traditional auditing firms miss.
+I specialize in mathematically complex DeFi protocols, low-level EVM/Move state corruption, and proprietary zero-day static analysis tooling. I find the critical vulnerabilities — missing bounds checks, unsafe truncations, protocol insolvency vectors — that top-tier auditing firms consistently miss.
+
+**Every bug I submit comes with bytecode-level verification.** I don't stop at source code review. I trace vulnerabilities down to raw EVM opcodes, storage slot diffs, and on-chain transaction proofs. The disclosures below demonstrate this — each one backed by bytecode comparisons, mainnet fork tests, and immutable on-chain evidence.
+
+### 🔍 Available for Audits
+
+I'm available to audit your protocol for the class of critical bugs that traditional firms overlook. My process includes:
+
+- **Bytecode-level analysis** — reading and diffing compiled output, not just Solidity/Move source
+- **Custom static analysis tooling** — proprietary scanners that trace beyond first-level contract interactions to catch deep state corruption and cross-contract insolvency paths
+- **Manual expert review** — focused on the mathematically complex areas (price oracles, liquidation math, fixed-point arithmetic, epoch/timing dependencies) where precision errors create protocol-draining vulnerabilities
+- **Full PoC delivery** — every finding delivered with a working Foundry/Move test reproducing the exploit on a mainnet fork
+
+> Interested? Reach out via [GitHub Sponsors](https://github.com/sponsors/donnyoregon) or DM **@arch** on [Cantina](https://cantina.xyz).
 
 ---
 

@@ -12,7 +12,7 @@ My public repositories serve as an immutable record of systemic fraud in the Web
 
 ### 1. Marginal Protocol — Cantina Complicity
 
-**VINCE VU#643748** | Finding #27 (Critical) | Submitted to Cantina January 31, 2026
+**CERT/CC VINCE VU#643748** | Finding #27 (Critical) | Submitted to Cantina January 31, 2026
 
 **Vulnerability:** Unsafe Downcast & Unchecked Q96 Price Truncation leading to Pool Insolvency in `MarginalV1Pool`.
 

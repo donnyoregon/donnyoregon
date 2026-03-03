@@ -79,7 +79,7 @@ During the same audit session, I identified a second, independent Critical-sever
 
 **Vulnerability:** GC Epoch Desynchronization Race Condition in `node.rs` causing unauthorized permanent data loss / GDPR violation.
 
-**The Audit (from `gc_epoch_desync_poc.txt` / `walrus_replay/`):**
+**The Audit (from `gc_epoch_desync_poc.txt`):**
 
 - Identified a critical race condition in `crates/walrus-service/src/node.rs` where two subsystems read different epoch values simultaneously:
   - **Line 3118 — The Check:** `is_blob_registered()` reads `self.current_committee_epoch()` → returns Epoch `42`.
@@ -89,10 +89,15 @@ During the same audit session, I identified a second, independent Critical-sever
 - Walrus Staking Object: `0x6c2cc5c78b2512dcd83500cf10b8e6f6b70a5d9cef1e0e621ec48db58c7f3b3e`
 - Network: Sui Mainnet
 - Reported to HackenProof: **December 2, 2025**
-- Wrote three independent proof scripts (`prove_patch.sh`, `prove_patch_v2.sh`, `prove_patch_red.sh`) performing git time-travel:
-  - Uses `git rev-list -n 1 --before="2025-12-02" main` to get the exact Dec 1 vulnerable commit hash.
-  - **Before (Dec 1, Vulnerable):** `grep "contract_epoch" garbage_collection.rs` — function reads `contract_epoch` internally with no external epoch input.
-  - **After (Patched on `main`):** `grep "fn start_garbage_collection_task" garbage_collection.rs` — function now accepts `epoch: Epoch` as an explicit parameter, eliminating the race condition.
+
+**Proof Scripts (`walrus_replay/`):**
+
+Three independent scripts verify the stealth patch by comparing the vulnerable code against the current `main` branch:
+
+- **`prove_patch.sh`:** Uses `git rev-list -n 1 --before="2025-12-02" main` to find the exact Dec 1 commit hash. Searches `garbage_collection.rs` for `contract_epoch` (vulnerable — internal epoch read) vs `fn start_garbage_collection_task` (patched — now accepts `epoch: Epoch` as parameter).
+- **`prove_patch_v2.sh`:** Checks out commit `6aba4f7b87359f3d8be3ec57e09fbec7465e1d6e` directly. Uses `grep -r "fn start_garbage_collection_task"` to **dynamically locate the file** (because MystenLabs moved the function). Reads 20 lines of context to show the full vulnerable function body.
+- **`prove_patch_red.sh`:** Same as v2 but with red ANSI highlighting on the function name and `epoch: Epoch` parameter to visually demonstrate the fix. Uses `sed` to extract and highlight 15 lines of context.
+- **Critical finding:** The PoC identifies the vulnerability in `node.rs` (lines 3118/1735), but the prove_patch scripts had to search `garbage_collection.rs` and use `grep -r` because MystenLabs **moved the function to a different file** as part of the cover-up — confirmed by the SHADOW_PATCH_MANIFEST showing both `node.rs` and `garbage_collector.rs` in the codebase.
 
 **The Fraud (documented in [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-disclosure) and `walrus_research_lab/`):**
 

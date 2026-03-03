@@ -1,4 +1,4 @@
-# Hi, I'm Corrin (@donnyoregon) 🛡️
+# Hi, I'm Corrin (@donnyoregon)
 
 ### Independent Web3 Security Researcher | EVM & Move Bytecode Analyst
 
@@ -6,7 +6,7 @@ I specialize in mathematically complex DeFi protocols, low-level EVM/Move state 
 
 ---
 
-## 🔍 Systemic "Theft of Work" Disclosures
+## Systemic "Theft of Work" Disclosures
 
 My public repositories serve as an immutable record of systemic fraud in the Web3 security industry. I have published definitive forensic evidence (bytecode diffs, on-chain transaction hashes, storage slot analysis, and chat logs) proving that top-tier protocols and their associated bug bounty platforms routinely collude to steal whitehat research via stealth-patching.
 
@@ -29,7 +29,7 @@ My public repositories serve as an immutable record of systemic fraud in the Web
 During the same audit session, I identified a second, independent Critical-severity vulnerability in the same `MarginalV1Pool` contract at `0x3A6C55Ce74d940A9B5dDDE1E57eF6e70bC8757A7`. This bug exploits a fundamental design flaw in the pool's price oracle mechanism that creates a window where insolvent positions cannot be liquidated, enabling an attacker to extract margin from lenders risk-free.
 
 - **Severity:** Critical
-- **Status:** ⚠️ **LIVE AND UNPATCHED ON ETHEREUM MAINNET**
+- **Status: LIVE AND UNPATCHED ON ETHEREUM MAINNET**
 - **PoC:** Complete, passing Foundry mainnet fork test exists locally (`ForkLiquidation.t.sol`)
 - **Why unreported:** After Cantina rejected Bug #1 and locked the dispute, I had zero incentive to hand them a second free bug for the same protocol that just demonstrated they will steal my work.
 
@@ -135,7 +135,7 @@ Evidence: [donnyoregon/walrus-disclosure](https://github.com/donnyoregon/walrus-
 
 ---
 
-## 🛠️ Technical Stack & Tooling
+## Technical Stack & Tooling
 
 - **Languages:** Solidity, Yul, Move, Python, Rust, Bash
 - **Frameworks:** Foundry (Forge/Cast/Anvil), Hardhat, Sui Move
